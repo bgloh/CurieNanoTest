@@ -10,7 +10,7 @@ Madgwick filter;
 BLEService EulerService("19B1180F-E8F2-537E-4F6C-D104768A1214"); // BLE Euler Service
 // BLE Battery Level Characteristic"
 BLECharacteristic EulerAngleChar("19B12A19-E8F2-537E-4F6C-D104768A1214",  // standard 16-bit characteristic UUID
-                                                     BLERead | BLENotify | BLEWrite | BLEWriteWithoutResponse , 2);     // remote clients will be able to
+                                                     BLERead | BLENotify | BLEWrite, 2);     // remote clients will be able to
 uint8_t mData[2] = {0xFF, 0xFF};
                                                      
 // get notifications if this characteristic changes
@@ -49,11 +49,15 @@ void setup() {
   // assign event handler for connected and disconnected peripherals
   BLE.setEventHandler(BLEConnected, OnConnectionHandler);
   BLE.setEventHandler(BLEDisconnected, DisconnectedHandler);
-//  BLE.setEventHandler(BLEValueUpdated, NotificatioHandler);
+ // BLE.setEventHandler(BLEValueUpdated, NotificatioHandler);
+// BLE.setEventHandler(BLESubscribed, SubscriptionHandler);
 
   // assign event handler for characteristic
   EulerAngleChar.setEventHandler(BLEWritten, CharacteristWrittenHandler);
+  EulerAngleChar.setEventHandler(BLESubscribed, SubscriptionHandler);
+  EulerAngleChar.setEventHandler(BLEValueUpdated, NotificationHandler);
 
+    
   // set initial value for the characteristic
   EulerAngleChar.setValue(mData,2);   // initial 2 bytes value for this characteristic
   
@@ -82,7 +86,9 @@ void loop() {
   
   if (microsNow - microsPrevious >= microsPerReading) {
     blinkLED(20); // blink
-
+    static unsigned int loop_cnt =0;
+    loop_cnt++;
+    
    // read raw data from CurieIMU
     CurieIMU.readMotionSensor(aix, aiy, aiz, gix, giy, giz);
 
@@ -102,6 +108,17 @@ void loop() {
     pitch = filter.getPitch();
     heading = filter.getYaw();
 
+    if(loop_cnt == 10) {
+      static int16_t index=0;
+      index++;
+    mData[0]= (uint8_t) ((index & 0xFF00)>>8);
+    mData[1]= (uint8_t) (index & 0x00FF);
+    EulerAngleChar.setValue(mData,2);
+    loop_cnt = 0;
+    Serial.print(index);Serial.print("\t");Serial.print(mData[0]);Serial.print("\t");Serial.println(mData[1]);
+    }
+    
+    
     // Send Euler angle to Serial port
     #ifdef SERIAL_SEND
     Serial.print("Orientation: ");Serial.print(heading);
@@ -159,12 +176,19 @@ void DisconnectedHandler(BLEDevice central) {
 
 void CharacteristWrittenHandler(BLEDevice central, BLECharacteristic characteristic) {
   // central wrote new value to characteristic, update LED
-  Serial.print("Characteristic event, written: ");
+  Serial.println("Characteristic event, written: ");
  // Serial.println(characteristic.value());
 }
+/*void SubscriptionHandler(BLEDevice central , BLECharacteristic characteristic)){
+  Serial.println("Subscribed");
+}*/
+void SubscriptionHandler(BLEDevice central, BLECharacteristic characteristic){
+  Serial.println("subscribed");
+   //EulerAngleChar.setValue(mData,2);   // initial 2 bytes value for this characteristic
+}
 
-void NotificatioHandler(){
-   EulerAngleChar.setValue(mData,2);   // initial 2 bytes value for this characteristic
+void NotificationHandler(BLEDevice central, BLECharacteristic characteristic){
+  //characteristic.setValue(mData,2);
 }
  
 
