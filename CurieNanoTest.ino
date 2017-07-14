@@ -3,6 +3,7 @@
 #include <MadgwickAHRS.h>
 #define LED 13
 #define UPDATE_RATE 25 //UPDATE REATE IN HZ
+#define BYTES_TO_SEND 6 // NUMBER OF BYTES TO SEND
 // #define SERIAL_SEND
 
 // GLOBAL VARIABLES
@@ -10,8 +11,8 @@ Madgwick filter;
 BLEService EulerService("19B1180F-E8F2-537E-4F6C-D104768A1214"); // BLE Euler Service
 // BLE Battery Level Characteristic"
 BLECharacteristic EulerAngleChar("19B12A19-E8F2-537E-4F6C-D104768A1214",  // standard 16-bit characteristic UUID
-                                                     BLERead | BLENotify | BLEWrite, 2);     // remote clients will be able to
-uint8_t mData[2] = {0xFF, 0xFF};
+                                                     BLERead | BLENotify | BLEWrite, BYTES_TO_SEND);     // remote clients will be able to
+uint8_t mData[BYTES_TO_SEND] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
                                                      
 // get notifications if this characteristic changes
 unsigned long microsPerReading, microsPrevious;
@@ -59,7 +60,7 @@ void setup() {
 
     
   // set initial value for the characteristic
-  EulerAngleChar.setValue(mData,2);   // initial 2 bytes value for this characteristic
+  EulerAngleChar.setValue(mData,BYTES_TO_SEND);   // initial 2 bytes value for this characteristic
   
   // start advertising
   BLE.advertise(); 
@@ -108,14 +109,18 @@ void loop() {
     pitch = filter.getPitch();
     heading = filter.getYaw();
 
-    if(loop_cnt == 10) {
-      static int16_t index=0;
-      index++;
-    mData[0]= (uint8_t) ((index & 0xFF00)>>8);
-    mData[1]= (uint8_t) (index & 0x00FF);
-    EulerAngleChar.setValue(mData,2);
+    if(loop_cnt == 5) {
+ 
+    uint8_t RollPitchYaw[6];  // Roll_high_byte Roll_low_byte Pitch_high_byte Pitch_low_byte ...
+       
+    // preparing data to send
+    RollPitchYawByteStream(roll,pitch,heading, RollPitchYaw);
+
+    // update characteristics
+    EulerAngleChar.setValue( RollPitchYaw, BYTES_TO_SEND);
+    
     loop_cnt = 0;
-    Serial.print(index);Serial.print("\t");Serial.print(mData[0]);Serial.print("\t");Serial.println(mData[1]);
+    Serial.print(roll);Serial.print("\t");Serial.print(pitch);Serial.print("\t");Serial.println(heading);
     }
     
     
@@ -176,19 +181,55 @@ void DisconnectedHandler(BLEDevice central) {
 
 void CharacteristWrittenHandler(BLEDevice central, BLECharacteristic characteristic) {
   // central wrote new value to characteristic, update LED
-  Serial.println("Characteristic event, written: ");
- // Serial.println(characteristic.value());
+  const unsigned char *data = characteristic.value();
+  Serial.print("Characteristic event, written: ");
+  Serial.println(*data);
 }
-/*void SubscriptionHandler(BLEDevice central , BLECharacteristic characteristic)){
-  Serial.println("Subscribed");
-}*/
+
 void SubscriptionHandler(BLEDevice central, BLECharacteristic characteristic){
   Serial.println("subscribed");
    //EulerAngleChar.setValue(mData,2);   // initial 2 bytes value for this characteristic
 }
 
 void NotificationHandler(BLEDevice central, BLECharacteristic characteristic){
-  //characteristic.setValue(mData,2);
+  Serial.println("notification hadler");
+  //EulerAngleChar.setValue(mData,2);
 }
- 
+
+uint8_t * convertInt16toUchar8(int16_t input) {
+  uint8_t output[2] ; 
+  output[0]= (uint8_t) ((input & 0xFF00)>>8); // High Byte
+  output[1]= (uint8_t) (input & 0x00FF);      // Low  Byte
+  return output;
+} 
+
+void convertInt16toUchar8_v2(int16_t input, uint8_t* output) {
+  
+  output[0]= (uint8_t) ((input & 0xFF00)>>8); // High Byte
+  output[1]= (uint8_t) (input & 0x00FF);      // Low  Byte
+  
+} 
+
+ void RollPitchYawByteStream(float roll, float pitch, float heading, uint8_t* RollPitchYawAngle){
+
+   int16_t roll_int16, pitch_int16, yaw_int16;
+   uint8_t RollM[2], PitchM[2], YawM[2];
+   //uint8_t RollPitchYawAngle[6];  // RollHighByte RollLowByte PitchHighByte PitchLowByte ...
+  
+    roll_int16  =   (int16_t) ( roll * 10);
+    pitch_int16 =   (int16_t) ( pitch * 10);
+    yaw_int16   =   (int16_t) ( heading * 10);
+    
+    convertInt16toUchar8_v2(roll_int16, RollM);
+    convertInt16toUchar8_v2(pitch_int16, PitchM);
+    convertInt16toUchar8_v2(yaw_int16, YawM);
+    
+    RollPitchYawAngle[0] =  RollM[0];  //HB
+    RollPitchYawAngle[1] =  RollM[1]; //LB
+    RollPitchYawAngle[2] =  PitchM[0];
+    RollPitchYawAngle[3] =  PitchM[1];
+    RollPitchYawAngle[4] =  YawM[0];
+    RollPitchYawAngle[5] =  YawM[1];
+}
+
 
