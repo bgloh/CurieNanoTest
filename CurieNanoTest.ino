@@ -1,23 +1,31 @@
 #include <CurieIMU.h>
 #include <CurieBLE.h>
 #include <MadgwickAHRS.h>
-#define LED 13
-#define UPDATE_RATE 25 //UPDATE REATE IN HZ
-#define BYTES_TO_SEND 6 // NUMBER OF BYTES TO SEND
-// #define SERIAL_SEND
+#include "CurieTimerOne.h"
+
+#define   LED                                           13
+//#define UPDATE_RATE 25 //UPDATE REATE IN HZ
+#define   BYTES_TO_SEND                                 6 // NUMBER OF BYTES TO SEND
+#define   ISR_CALLBACK_FREQUENCY_1HZ                    1000000
+#define   ISR_CALLBACK_FREQUENCY_10HZ                   (1000000/10)
+#define   ISR_CALLBACK_FREQUENCY_25HZ                   (1000000/25)
+#define   ISR_FREQUENCY                                 ISR_CALLBACK_FREQUENCY_25HZ
+#define   MADGWICK_FILTER_FREQUENCY_25HZ                25
+#define   ACCEL_FREQUENCY_250HZ                         250
+#define   GYRO_FREQUENCY_250HZ                          250
+#define   ACCEL_RANGE_2G                                2
+#define   GYRO_RANGE_250DEG_PER_SEC                     250
 
 // GLOBAL VARIABLES
 Madgwick filter;
 BLEService EulerService("19B1180F-E8F2-537E-4F6C-D104768A1214"); // BLE Euler Service
+
 // BLE Battery Level Characteristic"
 BLECharacteristic EulerAngleChar("19B12A19-E8F2-537E-4F6C-D104768A1214",  // standard 16-bit characteristic UUID
                                                      BLERead | BLENotify | BLEWrite, BYTES_TO_SEND);     // remote clients will be able to
 uint8_t mData[BYTES_TO_SEND] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
                                                      
-// get notifications if this characteristic changes
-unsigned long microsPerReading, microsPrevious;
-float accelScale, gyroScale;
-volatile unsigned long int loopCounter; 
+float g_roll, g_pitch, g_heading;    // Euler angles
 
 void setup() {
   Serial.begin(9600);
@@ -25,20 +33,21 @@ void setup() {
 
   // start the IMU and filter
   CurieIMU.begin();
-  CurieIMU.setGyroRate(UPDATE_RATE * 10);
-  CurieIMU.setAccelerometerRate(UPDATE_RATE * 10);
+  CurieIMU.setGyroRate(GYRO_FREQUENCY_250HZ); 
+  CurieIMU.setAccelerometerRate(ACCEL_FREQUENCY_250HZ); 
  
   // Set the accelerometer range to 2G
-  CurieIMU.setAccelerometerRange(2);
+  CurieIMU.setAccelerometerRange(ACCEL_RANGE_2G);
+  
   // Set the gyroscope range to 250 degrees/second
-  CurieIMU.setGyroRange(250);
+  CurieIMU.setGyroRange(GYRO_RANGE_250DEG_PER_SEC);
 
  // Start Magwick filter
-  filter.begin(UPDATE_RATE);
+  filter.begin(MADGWICK_FILTER_FREQUENCY_25HZ); // 25 Hz
 
-  // BLE Setup
-  { 
+  // Begin BLE
   BLE.begin();
+  
   BLE.setLocalName("EulerMonitor");
   
   BLE.setAdvertisedService(EulerService);  // add the service UUID
@@ -50,8 +59,6 @@ void setup() {
   // assign event handler for connected and disconnected peripherals
   BLE.setEventHandler(BLEConnected, OnConnectionHandler);
   BLE.setEventHandler(BLEDisconnected, DisconnectedHandler);
- // BLE.setEventHandler(BLEValueUpdated, NotificatioHandler);
-// BLE.setEventHandler(BLESubscribed, SubscriptionHandler);
 
   // assign event handler for characteristic
   EulerAngleChar.setEventHandler(BLEWritten, CharacteristWrittenHandler);
@@ -64,32 +71,36 @@ void setup() {
   
   // start advertising
   BLE.advertise(); 
-  }
+  
   // End of BLE setup 
   Serial.println("Bluetooth device active, waiting for connections...");
    
-  // initialize variables to pace updates to correct rate
-  microsPerReading = 1000000 / UPDATE_RATE;
-  microsPrevious = micros();
+  // Start interrupt
+   CurieTimerOne.start(ISR_FREQUENCY, &RRYupdateIsr);  // set timer and callback
 }
 
 void loop() {
+
+  // Poll BLE event
+  BLE.poll();
+
+  // Send RPY to serial monitor
+  Serial.println("roll(deg),pitch(deg), yaw(deg)"); 
+  Serial.print(g_roll);Serial.print("\t");Serial.print(g_pitch);Serial.print("\t");Serial.println(g_heading);
+  delay(1000);
+ }
+
+// Timer1 interrupt service routine
+void RRYupdateIsr() {
   int aix, aiy, aiz,gix, giy, giz;  // acceleration and gyroscope in int16 
   float ax, ay, az,gx, gy, gz;    // acceleration and gyroscope in float
-  float roll, pitch, heading;    // Euler angles
-  unsigned long microsNow;
-
- //
-  BLE.poll();
- 
-  // check if it's time to read data and update the filter
-  microsNow = micros();
+  uint8_t RollPitchYaw[6];  // Roll_high_byte Roll_low_byte Pitch_high_byte Pitch_low_byte ...
+  static unsigned int loop_cnt =0;
+  loop_cnt++;
   
-  if (microsNow - microsPrevious >= microsPerReading) {
-    blinkLED(20); // blink
-    static unsigned int loop_cnt =0;
-    loop_cnt++;
-    
+  // blink
+  timedBlink();
+  
    // read raw data from CurieIMU
     CurieIMU.readMotionSensor(aix, aiy, aiz, gix, giy, giz);
 
@@ -105,36 +116,23 @@ void loop() {
     filter.updateIMU(gx, gy, gz, ax, ay, az);
 
     // update the heading, pitch and roll
-    roll = filter.getRoll();
-    pitch = filter.getPitch();
-    heading = filter.getYaw();
+    g_roll = filter.getRoll();
+    g_pitch = filter.getPitch();
+    g_heading = filter.getYaw();
 
-    if(loop_cnt == 5) {
- 
-    uint8_t RollPitchYaw[6];  // Roll_high_byte Roll_low_byte Pitch_high_byte Pitch_low_byte ...
-       
-    // preparing data to send
-    RollPitchYawByteStream(roll,pitch,heading, RollPitchYaw);
-
-    // update characteristics
-    EulerAngleChar.setValue( RollPitchYaw, BYTES_TO_SEND);
-    
-    loop_cnt = 0;
-    Serial.print(roll);Serial.print("\t");Serial.print(pitch);Serial.print("\t");Serial.println(heading);
+    // Update characteristics every two incidents of Interrupt
+    if(loop_cnt == 2) {
+      
+      // preparing data to send
+      RollPitchYawByteStream(g_roll,g_pitch,g_heading, RollPitchYaw);
+      
+      // update characteristics
+      EulerAngleChar.setValue( RollPitchYaw, BYTES_TO_SEND);
+      
+      // reset loop counter
+      loop_cnt = 0;
     }
-    
-    
-    // Send Euler angle to Serial port
-    #ifdef SERIAL_SEND
-    Serial.print("Orientation: ");Serial.print(heading);
-    Serial.print(" ");Serial.print(pitch);
-    Serial.print(" ");Serial.println(roll);
-    #endif
-   
-    // increment previous time, so we keep proper pace
-    microsPrevious = microsPrevious + microsPerReading;
-  }
-}
+ }
 
 float convertRawAcceleration(int aRaw) {
   // since we are using 2G range
@@ -153,6 +151,14 @@ float convertRawGyro(int gRaw) {
   float g = (gRaw * 250.0) / 32768.0;
   return g;
 }
+
+void timedBlink()   // callback function when interrupt is asserted
+{
+  static char toggle = 1;
+  digitalWrite(13, toggle);
+  toggle = !toggle;  // use NOT operator to invert toggle value
+}
+
 
 void blinkLED(  const unsigned char DESIRED_COUNT)
 {
