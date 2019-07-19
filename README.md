@@ -73,6 +73,6 @@ Download "DFRobot-QMC5883-master.zip" and unpack it, copy the DFRobot-QMC5883-ma
 
 Wait five seconds after the download is complete, open the serial monitor port and set the baud rate 9600. Rotate the CurieNano board and you should see the angle change.
 
-![HMC5883_2](./image/Curie_Nano_HMC5883L_2.png)
+![HMC5883_2](./images/Curie_Nano_HMC5883L_2.png)
 
 
