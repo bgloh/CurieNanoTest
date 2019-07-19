@@ -36,11 +36,11 @@ warning_yellow.png NOTE: This is based on the Intel Curie motherboard design. Wh
 Install Arduino/Genuino 101 Plug-in
 Open Arduino IDE, select "Tools" in the menu bar, click "Board" to open the board manager and install the Intel Curie motherboard programming libraries and drivers.
 
-DFR0453_Boardmanager安装.png
+![Board Manager](./images/DFR0453_Boardmanager.png)
 
 In the pop-up window of the board manager find "Intel Curie Boards by Intel version...", at the bottom left, select the latest version of the "select version", and click on install. When it is installed successfully you will see the following image.
 
-DFR0453_Curie插件.png
+![Curie](./images/DFR0453_Curie.png)
 
 After the successful installation of Intel Curie Boards of plug-in and driver package, you should find Intel Curie in the "Board" menu. You may now program for all based Curie development board.
 
@@ -50,12 +50,12 @@ CurieNano Example Program
 Once you have successfully installed the development environment, programming the CurieNano the same as using an Arduino. The following is a brief tutorial:
 
 Open Arduino IDE and connect the CurieNano using a MicroUSB cable. The system should automatically install Arduino 101 drivers and identify CurieNano COM port at the bottom right of the window.
-DFR0453_COM口.png
+![DRF0453_COM](./images/DFR0453_COM.png)
 
 Open the famous "Blink" Example program. Under "Board" select Arduino 101. Under "port" select the corresponding COM port. Finally click "upload" to upload the sample program.
 
 If your upload was successful you should see this:
-DFR0453_上传成功.png
+![DRF0453](./images/DFR0453.png)
 
 Click to view: [CurieNano(Arduino/Genuino101)Bluetooth, Accelerometer Gyroscope, and Real-Time Clock Libraries](https://www.arduino.cc/en/Guide/Arduino101#toc3)
 
@@ -69,10 +69,10 @@ HMC5883L/QMC5883 libraries About Library installation.
 
 Download "DFRobot-QMC5883-master.zip" and unpack it, copy the DFRobot-QMC5883-master folder to the Libraries folder of Arduino and then open Arduino IDE. From "File -> Examples -> QMC5883 -> QMC5883_compass" to open "QMC5883_compass.ino", select your "board" and "port" and upload to the CurieNano in the same way you uploaded the blink sketch.
 
-Curie_Nano_HMC5883L_1.png
+![HMC5883](./images/Curie_Nano_HMC5883L_1.png)
 
 Wait five seconds after the download is complete, open the serial monitor port and set the baud rate 9600. Rotate the CurieNano board and you should see the angle change.
 
-Curie_Nano_HMC5883L_2.png
+![HMC5883_2](./image/Curie_Nano_HMC5883L_2.png)
 
-FAQ
+
