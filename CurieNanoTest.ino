@@ -73,7 +73,7 @@ void setup() {
   BLE.advertise(); 
   
   // End of BLE setup 
-  Serial.println("Bluetooth device active, waiting for connections...");
+  Serial.println("Bluetooth device active, waiting for connections awesome...");
    
   // Start interrupt
    CurieTimerOne.start(ISR_FREQUENCY, &RRYupdateIsr);  // set timer and callback
@@ -154,9 +154,11 @@ float convertRawGyro(int gRaw) {
 
 void timedBlink()   // callback function when interrupt is asserted
 {
-  static char toggle = 1;
-  digitalWrite(13, toggle);
-  toggle = !toggle;  // use NOT operator to invert toggle value
+  static int cnt, toggle;
+  if (++cnt > 20) {
+      digitalWrite(LED, toggle^=1);
+      cnt = 0;
+  }  
 }
 
 
@@ -202,12 +204,15 @@ void NotificationHandler(BLEDevice central, BLECharacteristic characteristic){
   //EulerAngleChar.setValue(mData,2);
 }
 
+/* 
 uint8_t * convertInt16toUchar8(int16_t input) {
   uint8_t output[2] ; 
   output[0]= (uint8_t) ((input & 0xFF00)>>8); // High Byte
   output[1]= (uint8_t) (input & 0x00FF);      // Low  Byte
   return output;
 } 
+*/
+
 
 void convertInt16toUchar8_v2(int16_t input, uint8_t* output) {
   

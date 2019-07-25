@@ -1,0 +1,5 @@
+{
+    "sketch": "CurieNanoTest.ino",
+    "board": "Intel:arc32:arduino_101",
+    "port": "COM4"  
+}

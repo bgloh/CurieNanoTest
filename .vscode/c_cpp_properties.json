@@ -1,0 +1,19 @@
+{
+    "configurations": [
+        {
+            "name": "Win32",
+            "includePath": [
+                "C:\\Program Files (x86)\\Arduino\\tools\\**",
+                "C:\\Program Files (x86)\\Arduino\\hardware\\arduino\\avr\\**",
+                "C:\\Users\\Byoung Loh\\AppData\\Local\\Arduino15\\packages\\Intel\\tools\\**",
+                "C:\\Users\\Byoung Loh\\AppData\\Local\\Arduino15\\packages\\Intel\\hardware\\arc32\\2.0.4\\**"
+            ],
+            "forcedInclude": [
+                "C:\\Program Files (x86)\\Arduino\\hardware\\arduino\\avr\\cores\\arduino\\Arduino.h",
+                "C:\\Users\\Byoung Loh\\AppData\\Local\\Arduino15\\packages\\Intel\\hardware\\arc32\\2.0.4\\cores\\arduino\\Arduino.h"
+            ],
+            "intelliSenseMode": "msvc-x64"
+        }
+    ],
+    "version": 4
+}
