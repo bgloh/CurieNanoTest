@@ -1,7 +1,8 @@
 #include <CurieIMU.h>
 #include <CurieBLE.h>
-#include <MadgwickAHRS.h>
-#include "CurieTimerOne.h"
+#include <CurieTimerOne.h>
+#include "MadgwickAHRS.h"
+
 
 #define   LED                                           13
 //#define UPDATE_RATE 25 //UPDATE REATE IN HZ
@@ -155,7 +156,7 @@ float convertRawGyro(int gRaw) {
 void timedBlink()   // callback function when interrupt is asserted
 {
   static int cnt, toggle;
-  if (++cnt > 20) {
+  if (++cnt > 30) {
       digitalWrite(LED, toggle^=1);
       cnt = 0;
   }  
