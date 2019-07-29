@@ -85,10 +85,10 @@ void loop() {
   // Poll BLE event
   BLE.poll();
 
-  // Send RPY to serial monitor
-  Serial.println("roll(deg),pitch(deg), yaw(deg)"); 
-  Serial.print(g_roll);Serial.print("\t");Serial.print(g_pitch);Serial.print("\t");Serial.println(g_heading);
-  delay(1000);
+  // Send Yaw(heading) Pitch Roll to serial monitor
+  Serial.print("Orientation,"); 
+  Serial.print(g_heading);Serial.print(",");Serial.print(g_pitch);Serial.print(",");Serial.println(g_roll);
+  delay(100);
  }
 
 // Timer1 interrupt service routine
